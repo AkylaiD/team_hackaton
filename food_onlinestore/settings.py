@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # modules
     'rest_framework',
     'rest_framework.authtoken',
+    'drf_yasg',
 
 
 #     custom applications

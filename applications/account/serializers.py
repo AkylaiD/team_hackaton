@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model, authenticate
+from django.core.mail import send_mail
 from rest_framework import serializers as serializers
 
 from applications.account.utils import send_activation_email
+from food_onlinestore.settings import EMAIL_HOST_USER
 
 User = get_user_model()
 
@@ -52,5 +54,49 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError(msg, code='authorization')
         attrs['user'] = user
         return attrs
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, email):
+        if not User.objects.filter(email=email).exists():
+            raise serializers.ValidationError('User not found')
+        return email
+
+    def send_verification_email(self):
+        email = self.validated_data.get('email')
+        user = User.objects.get(email=email)
+        user.create_activation_code()
+        send_mail(
+            'Password recovery',
+            f'Your activation code is: http://localhost:8000//account/forgot_password_complete/{user.activation_code}',
+            EMAIL_HOST_USER,
+            [user.email, ]
+        )
+
+
+class ForgotPasswordCompleteSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(min_length=8, required=True)
+    password_confirm = serializers.CharField(min_length=8, required=True)
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password1 = attrs.get('password')
+        password2 = attrs.get('password_confirm')
+
+        if not User.objects.filter(email=email).exists():
+            raise serializers.ValidationError('User not found')
+        if password1 != password2:
+            raise serializers.ValidationError('Passwords do not match')
+        return attrs
+
+    def set_new_password(self):
+        email = self.validated_data.get('email')
+        password = self.validated_data.get('password')
+        user = User.objects.get(email=email)
+        user.set_password(password)
+        user.save()
 
 
