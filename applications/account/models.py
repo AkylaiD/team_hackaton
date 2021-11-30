@@ -1,6 +1,10 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.contrib.auth.base_user import BaseUserManager
+from django.dispatch import receiver
+from django_rest_passwordreset.signals import reset_password_token_created
+
+from applications.account.utils import send_code
 
 
 class UserManager(BaseUserManager):
@@ -46,3 +50,8 @@ class User(AbstractUser):
         md5_object = hashlib.md5(encode_string)
         activation_code = md5_object.hexdigest()
         self.activation_code = activation_code
+
+@receiver(reset_password_token_created)
+def password_reset_token_created(reset_password_token, *args, **kwargs):
+    email = reset_password_token.user.email
+    send_code(email=email, code=reset_password_token.key, operation='reset_password')

@@ -5,3 +5,4 @@ python-decouple
 Pillow
 transliterate
 drf-yasg
+django-rest-passwordreset
